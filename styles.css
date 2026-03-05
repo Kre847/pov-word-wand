@@ -1,0 +1,40 @@
+
+:root{
+  --bg1:#ff8bd1; --bg2:#8b7bff;
+  --chip:#ffffffcc; --ink:#0b1736; --accent:#5c3bff; --cta:#5c3bff; --cta2:#7d5dff;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;color:var(--ink);font:16px/1.3 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(135deg,var(--bg1),var(--bg2));}
+
+.screen{display:flex;min-height:100vh;align-items:center;justify-content:space-between;gap:12px;padding:32px;position:relative}
+.left{flex:1;max-width:560px}
+.right{flex:1;display:flex;align-items:flex-end;justify-content:flex-end}
+.title{font-size:3rem;font-weight:800;color:#ffe663;margin:0 0 8px}
+.subtitle{font-size:1.2rem;color:#fff;margin:0 0 18px}
+.controls{display:flex;flex-direction:column;gap:12px}
+.rowBtns{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:var(--chip);padding:10px 12px;border-radius:14px;color:#000;font-weight:600;display:flex;flex-direction:column;box-shadow:0 2px 8px #0002;border:2px solid #00000010}
+.small{font-size:0.9rem;padding:6px 10px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.cta{background:linear-gradient(180deg,var(--cta),var(--cta2));color:#fff;font-size:1.2rem;padding:12px 16px;border-radius:12px;font-weight:800;border:none;box-shadow:0 4px 10px #0003;cursor:pointer}
+.cta[disabled]{opacity:.5;cursor:not-allowed}
+
+.magician{height:90vh;max-height:92vh;padding-right:10px;object-fit:contain}
+
+#wand{display:none;position:fixed;inset:0;background:#000;z-index:5}
+.stopBtn{position:fixed;top:16px;right:16px;background:#ff4b4b;color:#fff;border:none;border-radius:12px;padding:10px 16px;font-size:1.05rem;z-index:6;box-shadow:0 4px 10px #0006}
+.debug{position:fixed;bottom:0;left:0;right:0;background:#000a;color:#0f0;padding:10px;font:12px/1.3 ui-monospace,Menlo,Consolas,monospace;z-index:10;max-height:45vh;overflow:auto;white-space:pre-wrap}
+
+/* Dialogs */
+dialog{border:none;border-radius:16px;padding:20px;background:#fff;color:#000;max-width:520px;box-shadow:0 18px 40px #0006}
+dialog::backdrop{background:#0008}
+#tipDialog h3{margin:0 0 10px}
+#tipDialog button{background:var(--cta);border:none;color:#fff;padding:10px 14px;border-radius:10px;font-weight:700}
+
+/* Responsive tweaks */
+@media (max-width: 880px){
+  .screen{flex-direction:column;align-items:stretch}
+  .right{justify-content:center}
+  .magician{height:56vh;max-height:60vh;padding-right:0}
+}
