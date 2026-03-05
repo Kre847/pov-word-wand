@@ -1,6 +1,5 @@
 
-// Minimal SW with a new cache tag to avoid stale assets (see MDN PWA caching guidance)
-const CACHE='ww-v9-3-1';
+const CACHE='ww-v9-3-2';
 self.addEventListener('install', e=>{ e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./','./index.html','./styles.css','./app.js','./manifest.webmanifest']))); self.skipWaiting(); });
 self.addEventListener('activate', e=>{ e.waitUntil(self.clients.claim()); });
 self.addEventListener('fetch', e=>{ e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))); });
