@@ -1,4 +1,4 @@
-
+window.addEventListener('error', e => console.log('WW v9.3.1 runtime error:', e.message));
 // === Word Wand v9.3 ===
 // Welcome UI → Play (POV) → Welcome. Two-column layout; magician on right.
 // Includes: POV engine (7 rows), auto-mirror, disco mode, haptics,
@@ -170,3 +170,36 @@ setInterval(()=>{
 
 // enable/disable Go button
 goBtn.disabled = !textInput.value.trim();
+
+// --- SAFE BIND FALLBACK: keep Go working even if early code errored ---
+(() => {
+  const goBtn = document.getElementById('goBtn');
+  const textInput = document.getElementById('textInput');
+  const welcome = document.getElementById('welcome');
+  const wand = document.getElementById('wand');
+  const stopBtn = document.getElementById('stopBtn');
+
+  if (!goBtn || !textInput || !welcome || !wand || !stopBtn) return;
+
+  goBtn.disabled = !textInput.value.trim();
+  textInput.addEventListener('input', () => goBtn.disabled = !textInput.value.trim());
+
+  goBtn.addEventListener('click', () => {
+    if (!textInput.value.trim()) return;
+    // simple fade-out → play surface
+    welcome.style.transition = 'opacity .4s';
+    welcome.style.opacity = '0';
+    setTimeout(() => {
+      welcome.style.display = 'none';
+      wand.style.display = 'block';
+      stopBtn.style.display = 'block';
+    }, 400);
+  });
+
+  stopBtn.addEventListener('click', () => {
+    wand.style.display = 'none';
+    stopBtn.style.display = 'none';
+    welcome.style.display = 'flex';
+    setTimeout(() => (welcome.style.opacity = '1'), 20);
+  });
+})();
