@@ -1,6 +1,6 @@
 
 {
-  "name": "Word Wand v9.3.5 (diagnostic)",
+  "name": "Word Wand v9.3.6 (diag+offset)",
   "short_name": "Word Wand",
   "start_url": "./",
   "display": "standalone",
