@@ -1,6 +1,6 @@
 
-// Word Wand v9.3.8 — overlay OFF, full POV dots ON, visualViewport-centred
-window.addEventListener('error', e => console.log('WW v9.3.8 runtime error:', e.message));
+// Word Wand v9.3.9 — 8-dot POV + Fullscreen on Go, visualViewport-centred
+window.addEventListener('error', e => console.log('WW v9.3.9 runtime error:', e.message));
 
 const textInput = document.getElementById('textInput');
 const colorSelect = document.getElementById('colorSelect');
@@ -37,7 +37,14 @@ resetBtn.onclick = ()=>{
   } else { location.reload(); }
 };
 
-// visualViewport-centred canvas + offsets
+// Fullscreen helpers (best-effort; browser may deny outside user gesture)
+async function enterFullScreen(){
+  const el=document.documentElement; const anyEl=/** @type {any} */(el);
+  try{ if(el.requestFullscreen) await el.requestFullscreen();
+       else if(anyEl.webkitRequestFullscreen) await anyEl.webkitRequestFullscreen();
+  }catch(e){ console.log('fullscreen rejected', e); }
+}
+
 const dpr = Math.max(1, devicePixelRatio||1);
 const ctx = wand.getContext('2d',{alpha:false});
 function getVV(){ const vv=window.visualViewport; return vv?{w:vv.width,h:vv.height,px:vv.pageLeft||0,py:vv.pageTop||0,ox:vv.offsetLeft||0,oy:vv.offsetTop||0}:{w:innerWidth,h:innerHeight,px:0,py:0,ox:0,oy:0}; }
@@ -45,8 +52,8 @@ function applyVV(){ const v=getVV(); wand.width=Math.round(v.w*dpr); wand.height
 window.addEventListener('resize', applyVV); if(window.visualViewport){ visualViewport.addEventListener('resize', applyVV); visualViewport.addEventListener('scroll', applyVV); }
 applyVV();
 
-// POV text → columns (rows=7)
-const NUM_ROWS=7, VERTICAL_DILATE=2; let textColumns=[], colCount=0;
+// POV text → columns (rows=8)
+const NUM_ROWS=8, VERTICAL_DILATE=2; let textColumns=[], colCount=0;
 function buildColumns(){
   const txt=(textInput.value||'').toUpperCase().slice(0,24);
   if(!txt){ textColumns=[new Uint8Array(NUM_ROWS)]; colCount=1; return; }
@@ -93,7 +100,7 @@ function drawPOV(){
   if(!isPlaying) return; applyVV();
   const vv=getVV(); const w=Math.round(vv.w), h=Math.round(vv.h);
   ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h);
-  const base=0.94, heightFactor= base + (1.0-base)*sweepBoost; const spacing=(h*heightFactor)/NUM_ROWS; const diam=Math.min(spacing, Math.max(10, spacing*0.9)); const gap=Math.max(1, spacing-diam);
+  const base=0.96, heightFactor= base + (1.0-base)*sweepBoost; const spacing=(h*heightFactor)/NUM_ROWS; const diam=Math.min(spacing, Math.max(8, spacing*0.86)); const gap=Math.max(1, spacing-diam);
   const total=NUM_ROWS*(diam+gap); const top=(h-total)/2 + diam/2; const disco=(DOT_COLOR==='disco');
 
   const effectiveMirror = autoMirrorChk.checked ? (lastDir==='rtl') : false; let left=-35, right=35; if(effectiveMirror) [left,right]=[right,left];
@@ -103,7 +110,7 @@ function drawPOV(){
 
   for(let r=0;r<NUM_ROWS;r++) if(bits[r]){
     const y = top + r*(diam+gap), x = w/2; // centre column pattern
-    if(disco){ const hue=(hueBase + r*DISCO_STEP)%360; const c=hsvToRgb(hue,1,0.97); ctx.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`; } else ctx.fillStyle=DOT_COLOR;
+    if(disco){ const hue=(hueBase + r*DISCO_STEP)%360; const c=hsvToRgb(hue,1,0.98); ctx.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`; } else ctx.fillStyle=DOT_COLOR;
     ctx.beginPath(); ctx.arc(x,y,diam/2,0,Math.PI*2); ctx.fill();
   }
 
@@ -115,6 +122,6 @@ function drawPOV(){
 }
 
 function lockScroll(lock){ document.body.style.overflow = lock ? 'hidden' : ''; }
-function startPlay(){ if(!textInput.value.trim()) return; textInput.blur(); try{ window.scrollTo({top:0,left:0,behavior:'instant'}); }catch{ window.scrollTo(0,0); } lockScroll(true); DOT_COLOR=colorSelect.value||'#ffffff'; isPlaying=true; const dur=(durationSelect.value==='Infinity')?Infinity:Number(durationSelect.value); welcome.style.transition='opacity .4s'; welcome.style.opacity='0'; setTimeout(()=>{ welcome.style.display='none'; wand.style.display='block'; stopBtn.style.display='block'; sessionEnd=performance.now()+dur; requestAnimationFrame(drawPOV); startSensors(); },400); }
-function stopPlay(){ isPlaying=false; lockScroll(false); wand.style.display='none'; stopBtn.style.display='none'; welcome.style.display='flex'; setTimeout(()=>welcome.style.opacity='1',20); }
+async function startPlay(){ if(!textInput.value.trim()) return; textInput.blur(); try{ window.scrollTo({top:0,left:0,behavior:'instant'}); }catch{ window.scrollTo(0,0); } lockScroll(true); DOT_COLOR=colorSelect.value||'#ffffff'; isPlaying=true; await enterFullScreen(); const dur=(durationSelect.value==='Infinity')?Infinity:Number(durationSelect.value); welcome.style.transition='opacity .4s'; welcome.style.opacity='0'; setTimeout(()=>{ welcome.style.display='none'; wand.style.display='block'; stopBtn.style.display='block'; sessionEnd=performance.now()+dur; requestAnimationFrame(drawPOV); startSensors(); },400); }
+function stopPlay(){ isPlaying=false; lockScroll(false); if(document.fullscreenElement){ try{ document.exitFullscreen(); }catch{} } wand.style.display='none'; stopBtn.style.display='none'; welcome.style.display='flex'; setTimeout(()=>welcome.style.opacity='1',20); }
 stopBtn.onclick=stopPlay; goBtn.onclick=startPlay; goBtn.disabled=!textInput.value.trim();
