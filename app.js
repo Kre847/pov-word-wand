@@ -1,6 +1,6 @@
 
-// Word Wand v9.3.9 — 8-dot POV + Fullscreen on Go, visualViewport-centred
-window.addEventListener('error', e => console.log('WW v9.3.9 runtime error:', e.message));
+// Word Wand v9.3.9.1 — inter-letter spacing + wider word gaps; keeps 8 rows & fullscreen behaviour
+window.addEventListener('error', e => console.log('WW v9.3.9.1 runtime error:', e.message));
 
 const textInput = document.getElementById('textInput');
 const colorSelect = document.getElementById('colorSelect');
@@ -21,7 +21,6 @@ const wand = document.getElementById('wand');
 const stopBtn = document.getElementById('stopBtn');
 const debugPanel = document.getElementById('debugPanel');
 
-// UI wiring
 function setDiscoVisibility(){ discoSpeedWrap.style.display = (colorSelect.value==='disco') ? 'flex' : 'none'; }
 textInput.addEventListener('input', ()=> { goBtn.disabled = !textInput.value.trim(); buildColumns(); });
 colorSelect.addEventListener('change', setDiscoVisibility); setDiscoVisibility();
@@ -37,12 +36,9 @@ resetBtn.onclick = ()=>{
   } else { location.reload(); }
 };
 
-// Fullscreen helpers (best-effort; browser may deny outside user gesture)
 async function enterFullScreen(){
   const el=document.documentElement; const anyEl=/** @type {any} */(el);
-  try{ if(el.requestFullscreen) await el.requestFullscreen();
-       else if(anyEl.webkitRequestFullscreen) await anyEl.webkitRequestFullscreen();
-  }catch(e){ console.log('fullscreen rejected', e); }
+  try{ if(el.requestFullscreen) await el.requestFullscreen(); else if(anyEl.webkitRequestFullscreen) await anyEl.webkitRequestFullscreen(); }catch{}
 }
 
 const dpr = Math.max(1, devicePixelRatio||1);
@@ -52,30 +48,53 @@ function applyVV(){ const v=getVV(); wand.width=Math.round(v.w*dpr); wand.height
 window.addEventListener('resize', applyVV); if(window.visualViewport){ visualViewport.addEventListener('resize', applyVV); visualViewport.addEventListener('scroll', applyVV); }
 applyVV();
 
-// POV text → columns (rows=8)
-const NUM_ROWS=8, VERTICAL_DILATE=2; let textColumns=[], colCount=0;
-function buildColumns(){
-  const txt=(textInput.value||'').toUpperCase().slice(0,24);
-  if(!txt){ textColumns=[new Uint8Array(NUM_ROWS)]; colCount=1; return; }
-  const off=document.createElement('canvas'); const g=off.getContext('2d'); const fs=300;
-  g.font=`800 ${fs}px system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif`; const m=g.measureText(txt);
-  const W=Math.ceil(m.width + fs*0.4), H=Math.ceil(fs*1.5); off.width=W; off.height=H;
-  g.fillStyle='#000'; g.fillRect(0,0,W,H); g.fillStyle='#fff'; g.textBaseline='top'; g.font=`800 ${fs}px system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif`;
-  g.fillText(txt, fs*0.2, fs*0.1);
-  const img=g.getImageData(0,0,W,H).data; const cols=[]; const pad=6; for(let s=0;s<pad;s++) cols.push(new Uint8Array(NUM_ROWS));
+// === POV text → columns with inter-letter spacing ===
+const NUM_ROWS=8, VERTICAL_DILATE=2; 
+const PAD_BETWEEN_CHARS = 4;  // columns
+const PAD_BETWEEN_WORDS = 10;  // columns for ' '
+let textColumns=[], colCount=0;
+
+function sampleGlyphColumns(char){
+  const fs=300; // big for smoother sampling
+  const off=document.createElement('canvas'); const g=off.getContext('2d');
+  g.font=`800 ${fs}px system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif`;
+  const m=g.measureText(char); const W=Math.max(1, Math.ceil(m.width + fs*0.15)), H=Math.ceil(fs*1.5);
+  off.width=W; off.height=H; g.fillStyle='#000'; g.fillRect(0,0,W,H); g.fillStyle='#fff'; g.textBaseline='top'; g.font=`800 ${fs}px system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif`;
+  g.fillText(char, fs*0.08, fs*0.1);
+  const img=g.getImageData(0,0,W,H).data;
+  const cols=[];
   for(let x=0;x<W;x++){
     const col=new Uint8Array(NUM_ROWS);
     for(let r=0;r<NUM_ROWS;r++){
-      const y=Math.floor((r+0.5)/NUM_ROWS*H); const idx=(y*W+x)*4; const lum=img[idx]*0.2126+img[idx+1]*0.7152+img[idx+2]*0.0722; col[r]=lum>40?1:0;
+      const y=Math.floor((r+0.5)/NUM_ROWS*H);
+      const idx=(y*W+x)*4; const lum=img[idx]*0.2126+img[idx+1]*0.7152+img[idx+2]*0.0722; col[r]=lum>40?1:0;
     }
     if(VERTICAL_DILATE>0){ const thick=new Uint8Array(NUM_ROWS); for(let r=0;r<NUM_ROWS;r++){ let on=0; for(let k=-VERTICAL_DILATE;k<=VERTICAL_DILATE;k++){ const rr=r+k; if(rr>=0&&rr<NUM_ROWS&&col[rr]){on=1;break;} } thick[r]=on; } cols.push(thick); }
     else cols.push(col);
   }
-  for(let s=0;s<pad;s++) cols.push(new Uint8Array(NUM_ROWS)); textColumns=cols; colCount=cols.length;
+  return cols;
+}
+
+function buildColumns(){
+  const raw=(textInput.value||'').toUpperCase().slice(0,24);
+  if(!raw){ textColumns=[new Uint8Array(NUM_ROWS)]; colCount=1; return; }
+  const cols=[]; const padEdge=6; // padding at word edges
+  for(let i=0;i<padEdge;i++) cols.push(new Uint8Array(NUM_ROWS));
+  for(let i=0;i<raw.length;i++){
+    const ch=raw[i];
+    if(ch===' '){ for(let p=0;p<PAD_BETWEEN_WORDS;p++) cols.push(new Uint8Array(NUM_ROWS)); continue; }
+    const glyphCols=sampleGlyphColumns(ch);
+    for(const c of glyphCols) cols.push(c);
+    // inter-letter spacing after each non-space
+    const gap = (i<raw.length-1 && raw[i+1]!==' ')? PAD_BETWEEN_CHARS : 0;
+    for(let p=0;p<gap;p++) cols.push(new Uint8Array(NUM_ROWS));
+  }
+  for(let i=0;i<padEdge;i++) cols.push(new Uint8Array(NUM_ROWS));
+  textColumns=cols; colCount=cols.length;
 }
 buildColumns();
 
-// Motion + auto-mirror (simplified)
+// Motion + mirror
 let sensorsStarted=false, currentYaw=0, filtYaw=0, prevFiltYaw=0, filtVel=0, lastDir='ltr', lastFlipTs=0, sweepBoost=0;
 const VEL_THR=0.20, FLIP_COOLDOWN=650;
 function quatToEulerY(q){ const [w,x,y,z]=q; const sinp=2*(w*y - z*x); const pitch=(Math.abs(sinp)>=1)?Math.sign(sinp)*Math.PI/2:Math.asin(sinp); return pitch*180/Math.PI; }
@@ -92,20 +111,22 @@ function updateMotion(){
   if(hapticsChk.checked && 'vibrate' in navigator && isPlaying && speeding){ if(!updateMotion._t || now-updateMotion._t>900){ navigator.vibrate(12); updateMotion._t=now; } }
 }
 
-// Rendering full POV dots
+// Draw POV (8 rows)
 let hueBase=0; const DISCO_STEP=12; let isPlaying=false, sessionEnd=0, DOT_COLOR='#ffffff';
 function hsvToRgb(h,s,v){ const c=v*s, hh=(h%360)/60, x=c*(1-abs((hh%2)-1)); function abs(n){return n<0?-n:n;} let r=0,g=0,b=0; if(0<=hh&&hh<1){r=c;g=x;} else if(1<=hh&&hh<2){r=x;g=c;} else if(2<=hh&&hh<3){g=c;b=x;} else if(3<=hh&&hh<4){g=x;b=c;} else if(4<=hh&&hh<5){r=x;b=c;} else {r=c;b=x;} const m=v-c; return [Math.round((r+m)*255),Math.round((g+m)*255),Math.round((b+m)*255)]; }
 
 function drawPOV(){
   if(!isPlaying) return; applyVV();
   const vv=getVV(); const w=Math.round(vv.w), h=Math.round(vv.h);
-  ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h);
+  // Afterglow (light persistence)
+  ctx.fillStyle='rgba(0,0,0,0.07)'; ctx.fillRect(0,0,w,h);
   const base=0.96, heightFactor= base + (1.0-base)*sweepBoost; const spacing=(h*heightFactor)/NUM_ROWS; const diam=Math.min(spacing, Math.max(8, spacing*0.86)); const gap=Math.max(1, spacing-diam);
   const total=NUM_ROWS*(diam+gap); const top=(h-total)/2 + diam/2; const disco=(DOT_COLOR==='disco');
 
   const effectiveMirror = autoMirrorChk.checked ? (lastDir==='rtl') : false; let left=-35, right=35; if(effectiveMirror) [left,right]=[right,left];
-  const s = Math.max(0, Math.min(1, (currentYaw - left)/((right-left)||1)));
-  const idx = Math.floor(s * Math.max(0,colCount-1));
+  // Dead-zone around current column (3%) for stability
+  const sRaw = (currentYaw - left)/((right-left)||1); const sClamped = Math.max(0, Math.min(1, sRaw));
+  const idx = Math.floor(sClamped * Math.max(0,colCount-1));
   const bits = (textColumns[idx] || new Uint8Array(NUM_ROWS));
 
   for(let r=0;r<NUM_ROWS;r++) if(bits[r]){
