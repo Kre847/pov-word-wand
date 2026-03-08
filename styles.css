@@ -1,5 +1,5 @@
 
-:root{ --bg:#000000; --chip:#ffffffcc; --ink:#eaeaf1; --cta:#5c3bff; --cta2:#7d5dff; }
+:root{ --bg:#000; --chip:#ffffffcc; --ink:#eaeaf1; --cta:#5c3bff; --cta2:#7d5dff; }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;color:var(--ink);font:16px/1.3 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);}
