@@ -1,6 +1,6 @@
 
-// Word Wand v9.3.10.1 — vertical position tweak + larger dot diameter (bitmap 5x7 engine retained)
-window.addEventListener('error', e => console.log('WW v9.3.10.1 runtime error:', e.message));
+// Word Wand v9.3.10.2 — lower vertical anchor (+10%), Test Sweep slider, start immediately
+window.addEventListener('error', e => console.log('WW v9.3.10.2 runtime error:', e.message));
 
 const textInput = document.getElementById('textInput');
 const colorSelect = document.getElementById('colorSelect');
@@ -20,14 +20,19 @@ const welcome = document.getElementById('welcome');
 const wand = document.getElementById('wand');
 const stopBtn = document.getElementById('stopBtn');
 const debugPanel = document.getElementById('debugPanel');
+const testSweepChk = document.getElementById('testSweepChk');
+const sweepSpeed = document.getElementById('sweepSpeed');
+const sweepSpeedVal = document.getElementById('sweepSpeedVal');
 
 function setDiscoVisibility(){ discoSpeedWrap.style.display = (colorSelect.value==='disco') ? 'flex' : 'none'; }
 textInput.addEventListener('input', ()=> { goBtn.disabled = !textInput.value.trim(); buildColumns(); });
 colorSelect.addEventListener('change', setDiscoVisibility); setDiscoVisibility();
 discoSpeed.addEventListener('input', ()=> discoSpeedVal.textContent = (parseFloat(discoSpeed.value)||1.8).toFixed(1)+'×');
+sweepSpeed.addEventListener('input', ()=> sweepSpeedVal.textContent = (parseFloat(sweepSpeed.value)||1.2).toFixed(2)+'×');
 helpBtn.onclick = ()=> helpDialog.showModal();
 closeHelp.onclick = ()=> helpDialog.close();
 debugToggle.onclick = ()=>{ const on = debugPanel.style.display!=='block'; debugPanel.style.display = on?'block':'none'; };
+
 resetBtn.onclick = ()=>{
   if('serviceWorker' in navigator){
     caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k)))).then(()=>navigator.serviceWorker.getRegistrations())
@@ -48,10 +53,10 @@ function applyVV(){ const v=getVV(); wand.width=Math.round(v.w*dpr); wand.height
 window.addEventListener('resize', applyVV); if(window.visualViewport){ visualViewport.addEventListener('resize', applyVV); visualViewport.addEventListener('scroll', applyVV); }
 applyVV();
 
-// Bitmap 5x7 font
+// Bitmap 5x7 font (subset)
 const FONT5x7={ ' ': [0,0,0,0,0], 'A':[0x1E,0x05,0x05,0x1E,0x00], 'B':[0x1F,0x15,0x15,0x0A,0x00], 'C':[0x0E,0x11,0x11,0x0A,0x00], 'D':[0x1F,0x11,0x11,0x0E,0x00], 'E':[0x1F,0x15,0x15,0x11,0x00], 'F':[0x1F,0x05,0x05,0x01,0x00], 'G':[0x0E,0x11,0x15,0x1D,0x00], 'H':[0x1F,0x04,0x04,0x1F,0x00], 'I':[0x11,0x1F,0x11,0x00,0x00], 'J':[0x08,0x10,0x10,0x0F,0x00], 'K':[0x1F,0x04,0x0A,0x11,0x00], 'L':[0x1F,0x10,0x10,0x10,0x00], 'M':[0x1F,0x02,0x04,0x02,0x1F], 'N':[0x1F,0x02,0x04,0x1F,0x00], 'O':[0x0E,0x11,0x11,0x0E,0x00], 'P':[0x1F,0x05,0x05,0x02,0x00], 'Q':[0x0E,0x11,0x19,0x1E,0x00], 'R':[0x1F,0x05,0x0D,0x12,0x00], 'S':[0x12,0x15,0x15,0x09,0x00], 'T':[0x01,0x1F,0x01,0x01,0x00], 'U':[0x0F,0x10,0x10,0x0F,0x00], 'V':[0x07,0x08,0x10,0x08,0x07], 'W':[0x1F,0x08,0x04,0x08,0x1F], 'X':[0x1B,0x04,0x04,0x1B,0x00], 'Y':[0x03,0x04,0x18,0x04,0x03], 'Z':[0x19,0x15,0x13,0x11,0x00], '0':[0x0E,0x11,0x11,0x0E,0x00], '1':[0x00,0x12,0x1F,0x10,0x00], '2':[0x12,0x19,0x15,0x12,0x00], '3':[0x11,0x15,0x15,0x0A,0x00], '4':[0x07,0x04,0x04,0x1F,0x00], '5':[0x17,0x15,0x15,0x09,0x00], '6':[0x0E,0x15,0x15,0x08,0x00], '7':[0x01,0x01,0x1D,0x03,0x00], '8':[0x0A,0x15,0x15,0x0A,0x00], '9':[0x02,0x15,0x15,0x0E,0x00] };
 
-const NUM_ROWS=8; // output rows
+const NUM_ROWS=8;
 const PAD_BETWEEN_CHARS=4, PAD_BETWEEN_WORDS=10;
 let textColumns=[], colCount=0;
 
@@ -82,27 +87,46 @@ function quatToEulerY(q){ const [w,x,y,z]=q; const sinp=2*(w*y - z*x); const pit
 async function startSensors(){ if(sensorsStarted) return; sensorsStarted=true; try{ const DOE=globalThis.DeviceOrientationEvent; if(DOE && typeof DOE.requestPermission==='function'){ const res=await DOE.requestPermission(); if(res!=='granted') throw 0; } }catch{} try{ const Rel=globalThis.RelativeOrientationSensor, Abs=globalThis.AbsoluteOrientationSensor; const C=Rel||Abs; if(C){ const s=new C({frequency:60, referenceFrame:'device'}); s.addEventListener('reading',()=>{ if(s.quaternion){ const ydeg=quatToEulerY(s.quaternion); currentYaw=currentYaw*0.82 + ydeg*0.18; } }); s.start(); } }catch{} try{ addEventListener('deviceorientation',(e)=>{ if(typeof e.gamma==='number'&&!Number.isNaN(e.gamma)) currentYaw=currentYaw*0.85 + e.gamma*0.15; }, {passive:true}); }catch{} }
 function updateMotion(){ filtYaw=0.86*filtYaw + 0.14*currentYaw; const vel=filtYaw - prevFiltYaw; prevFiltYaw=filtYaw; filtVel=0.82*filtVel + 0.18*vel; const speeding=Math.abs(filtVel)>VEL_THR; sweepBoost=sweepBoost*0.85 + (speeding?1:0)*0.15; const now=performance.now(); if(speeding && (now-lastFlipTs)>FLIP_COOLDOWN){ const nd=(filtVel>0)?'ltr':'rtl'; if(nd!==lastDir){ lastDir=nd; lastFlipTs=now; } } if(hapticsChk.checked && 'vibrate' in navigator && isPlaying && speeding){ if(!updateMotion._t || now-updateMotion._t>900){ navigator.vibrate(10); updateMotion._t=now; } } }
 
-// Rendering (bigger dots + lower vertical anchor)
+// Rendering (bigger dots, lower centre; plus Test Sweep time-based progression)
 let hueBase=0; const DISCO_STEP=12; let isPlaying=false, sessionEnd=0, DOT_COLOR='#ffffff';
+const DIAM_FACTOR = 0.92;          // slightly bigger vs 9.3.10.1
+const VERTICAL_SHIFT_PCT = 0.18;   // previous 0.08 + extra 0.10
+const AFTERGLOW = 0.04;
+
+// Test sweep state
+let ts_pos=0, ts_dir=1, lastTime=0;         // ts_pos in [0..1]
+const BASE_PERIOD_SEC = 2.0;                // baseline L→R→L is 2 sweeps; we use 1 period for L→R
+
 function hsvToRgb(h,s,v){ const c=v*s, hh=(h%360)/60, x=c*(1-Math.abs((hh%2)-1)); let r=0,g=0,b=0; if(0<=hh&&hh<1){r=c;g=x;} else if(1<=hh&&hh<2){r=x;g=c;} else if(2<=hh&&hh<3){g=c;b=x;} else if(3<=hh&&hh<4){g=x;b=c;} else if(4<=hh&&hh<5){r=x;b=c;} else {r=c;b=x;} const m=v-c; return [Math.round((r+m)*255),Math.round((g+m)*255),Math.round((b+m)*255)]; }
 
-const VERTICAL_SHIFT_PCT = 0.08;   // move column ~8% of screen height downward
-const DIAM_FACTOR = 0.90;           // dot diameter as % of row spacing (was ~0.82)
-const AFTERGLOW = 0.04;             // mild persistence
-
-function drawPOV(){
+function drawPOV(t){
   if(!isPlaying) return; applyVV();
   const vv=getVV(); const w=Math.round(vv.w), h=Math.round(vv.h);
   ctx.fillStyle=`rgba(0,0,0,${AFTERGLOW})`; ctx.fillRect(0,0,w,h);
-  const base=0.95; const spacing=(h*base)/NUM_ROWS; const diam=Math.min(spacing, Math.max(7, spacing*DIAM_FACTOR)); const gap=Math.max(1, spacing-diam);
+
+  const spacing=(h*0.95)/NUM_ROWS; const diam=Math.min(spacing, Math.max(7, spacing*DIAM_FACTOR)); const gap=Math.max(1, spacing-diam);
   const total=NUM_ROWS*(diam+gap);
-  // Anchor lower by shifting the vertical centre downwards
-  const centerY = h/2 + h*VERTICAL_SHIFT_PCT;
+  const centerY = h/2 + h*VERTICAL_SHIFT_PCT; // shifted lower
   const top = centerY - total/2 + diam/2;
   const disco=(DOT_COLOR==='disco');
 
-  const effectiveMirror = autoMirrorChk.checked ? (lastDir==='rtl') : false; let left=-35, right=35; if(effectiveMirror) [left,right]=[right,left];
-  const sRaw = (filtYaw - left)/((right-left)||1); const sClamped = Math.max(0, Math.min(1, sRaw));
+  // Column index: sensor-based or auto sweep (time-based)
+  let sClamped=0;
+  if(testSweepChk.checked){
+    // auto sweep left↔right with adjustable speed (× factor). 1.0× ~ 1.2s L→R by default
+    const now=t||performance.now(); if(!lastTime) lastTime=now; const dt=(now-lastTime)/1000; lastTime=now;
+    const speedFactor = Math.max(0.1, parseFloat(sweepSpeed.value)||1.2);  // × factor
+    const cps = (1/BASE_PERIOD_SEC) * speedFactor; // cycles per second for L→R
+    ts_pos += ts_dir * cps * dt; // 0..1
+    if(ts_pos>1){ ts_pos=1; ts_dir=-1; }
+    if(ts_pos<0){ ts_pos=0; ts_dir=1; }
+    sClamped = ts_pos; // 0..1
+  } else {
+    const effectiveMirror = autoMirrorChk.checked ? (lastDir==='rtl') : false; let left=-35, right=35; if(effectiveMirror) [left,right]=[right,left];
+    const sRaw = (filtYaw - left)/((right-left)||1);
+    sClamped = Math.max(0, Math.min(1, sRaw));
+  }
+
   const idx = Math.floor(sClamped * Math.max(0,colCount-1));
   const bits = (textColumns[idx] || new Uint8Array(NUM_ROWS));
 
@@ -111,6 +135,7 @@ function drawPOV(){
     if(disco){ const hue=(hueBase + r*DISCO_STEP)%360; const c=hsvToRgb(hue,1,0.98); ctx.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`; } else ctx.fillStyle=DOT_COLOR;
     ctx.beginPath(); ctx.arc(x,y,diam/2,0,Math.PI*2); ctx.fill();
   }
+
   if(colorSelect.value==='disco'){ hueBase=(hueBase + (parseFloat(discoSpeed.value)||1.8))%360; }
   updateMotion();
   if(sessionEnd!==Infinity && performance.now()>sessionEnd) stopPlay();
@@ -118,6 +143,6 @@ function drawPOV(){
 }
 
 function lockScroll(lock){ document.body.style.overflow = lock ? 'hidden' : ''; }
-async function startPlay(){ if(!textInput.value.trim()) return; textInput.blur(); try{ window.scrollTo({top:0,left:0,behavior:'instant'}); }catch{ window.scrollTo(0,0); } lockScroll(true); DOT_COLOR=colorSelect.value||'#ffffff'; isPlaying=true; await enterFullScreen(); const dur=(durationSelect.value==='Infinity')?Infinity:Number(durationSelect.value); welcome.style.transition='opacity .4s'; welcome.style.opacity='0'; setTimeout(()=>{ welcome.style.display='none'; wand.style.display='block'; stopBtn.style.display='block'; sessionEnd=performance.now()+dur; requestAnimationFrame(drawPOV); startSensors(); },400); }
+async function startPlay(){ if(!textInput.value.trim()) return; textInput.blur(); try{ window.scrollTo({top:0,left:0,behavior:'instant'}); }catch{ window.scrollTo(0,0); } lockScroll(true); DOT_COLOR=colorSelect.value||'#ffffff'; isPlaying=true; await enterFullScreen(); const dur=(durationSelect.value==='Infinity')?Infinity:Number(durationSelect.value); welcome.style.transition='opacity .4s'; welcome.style.opacity='0'; setTimeout(()=>{ welcome.style.display='none'; wand.style.display='block'; stopBtn.style.display='block'; sessionEnd=performance.now()+dur; lastTime=0; ts_pos=0; ts_dir=1; requestAnimationFrame(drawPOV); startSensors(); },300); }
 function stopPlay(){ isPlaying=false; lockScroll(false); if(document.fullscreenElement){ try{ document.exitFullscreen(); }catch{} } wand.style.display='none'; stopBtn.style.display='none'; welcome.style.display='flex'; setTimeout(()=>welcome.style.opacity='1',20); }
 stopBtn.onclick=stopPlay; goBtn.onclick=startPlay; goBtn.disabled=!textInput.value.trim();

@@ -4,17 +4,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Word Wand v9.3.10.1</title>
+  <title>Word Wand v9.3.10.2</title>
   <meta name="theme-color" content="#000000" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=9.3.10.1" />
+  <link rel="stylesheet" href="styles.css?v=9.3.10.2" />
 </head>
 <body>
   <main>
     <section id="welcome" class="screen">
       <div class="left">
         <h1 class="title">Welcome to Word Wand!</h1>
-        <p class="subtitle">Type a word, then press Go.</p>
+        <p class="subtitle">Type a word, choose color, then press Go.</p>
 
         <div class="controls">
           <input id="textInput" class="textLarge" type="text" maxlength="24" placeholder="add text here" />
@@ -43,8 +43,15 @@
             </select>
           </label>
 
-          <label class="chip">Auto‑mirror <input id="autoMirrorChk" type="checkbox" checked /></label>
-          <label class="chip">Haptics <input id="hapticsChk" type="checkbox" checked /></label>
+          <div class="rowBtns">
+            <label class="chip small">Test sweep <input id="testSweepChk" type="checkbox" checked /></label>
+            <label id="speedWrap" class="chip small">Sweep speed
+              <input id="sweepSpeed" type="range" min="0.4" max="3.0" step="0.05" value="1.2" />
+              <span id="sweepSpeedVal" class="mono">1.2×</span>
+            </label>
+            <label class="chip small">Auto‑mirror <input id="autoMirrorChk" type="checkbox" checked /></label>
+            <label class="chip small">Haptics <input id="hapticsChk" type="checkbox" checked /></label>
+          </div>
 
           <button id="goBtn" class="cta" disabled>Go</button>
 
@@ -68,17 +75,18 @@
       <h3>Help</h3>
       <ol>
         <li>Type a word (max 24 characters).</li>
-        <li>Press <b>Go</b>.</li>
-        <li>Sweep left↔right for ~2 seconds.</li>
+        <li>Press <b>Go</b> — playback starts immediately.</li>
+        <li>Use <b>Test sweep</b> + <b>Sweep speed</b> to find the most legible pace.
+            Toggle Test sweep off to use phone motion instead.</li>
       </ol>
       <button id="closeHelp">Close</button>
     </dialog>
   </main>
 
-  <script src="app.js?v=9.3.10.1"></script>
+  <script src="app.js?v=9.3.10.2"></script>
   <script>
-    console.log('WW v9.3.10.1: index.html loaded');
-    window.addEventListener('DOMContentLoaded', ()=>console.log('WW v9.3.10.1: DOM ready'));
+    console.log('WW v9.3.10.2: index.html loaded');
+    window.addEventListener('DOMContentLoaded', ()=>console.log('WW v9.3.10.2: DOM ready'));
   </script>
 </body>
 </html>
