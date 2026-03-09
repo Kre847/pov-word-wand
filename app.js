@@ -1,6 +1,6 @@
 
-// Word Wand v9.3.10.2 — lower vertical anchor (+10%), Test Sweep slider, start immediately
-window.addEventListener('error', e => console.log('WW v9.3.10.2 runtime error:', e.message));
+// Word Wand v9.3.10.3 — widen Sweep speed slider to 1.5–7.0× (keeps instant start & lower vertical centre)
+window.addEventListener('error', e => console.log('WW v9.3.10.3 runtime error:', e.message));
 
 const textInput = document.getElementById('textInput');
 const colorSelect = document.getElementById('colorSelect');
@@ -28,7 +28,7 @@ function setDiscoVisibility(){ discoSpeedWrap.style.display = (colorSelect.value
 textInput.addEventListener('input', ()=> { goBtn.disabled = !textInput.value.trim(); buildColumns(); });
 colorSelect.addEventListener('change', setDiscoVisibility); setDiscoVisibility();
 discoSpeed.addEventListener('input', ()=> discoSpeedVal.textContent = (parseFloat(discoSpeed.value)||1.8).toFixed(1)+'×');
-sweepSpeed.addEventListener('input', ()=> sweepSpeedVal.textContent = (parseFloat(sweepSpeed.value)||1.2).toFixed(2)+'×');
+sweepSpeed.addEventListener('input', ()=> sweepSpeedVal.textContent = (parseFloat(sweepSpeed.value)||2.0).toFixed(1)+'×');
 helpBtn.onclick = ()=> helpDialog.showModal();
 closeHelp.onclick = ()=> helpDialog.close();
 debugToggle.onclick = ()=>{ const on = debugPanel.style.display!=='block'; debugPanel.style.display = on?'block':'none'; };
@@ -87,15 +87,14 @@ function quatToEulerY(q){ const [w,x,y,z]=q; const sinp=2*(w*y - z*x); const pit
 async function startSensors(){ if(sensorsStarted) return; sensorsStarted=true; try{ const DOE=globalThis.DeviceOrientationEvent; if(DOE && typeof DOE.requestPermission==='function'){ const res=await DOE.requestPermission(); if(res!=='granted') throw 0; } }catch{} try{ const Rel=globalThis.RelativeOrientationSensor, Abs=globalThis.AbsoluteOrientationSensor; const C=Rel||Abs; if(C){ const s=new C({frequency:60, referenceFrame:'device'}); s.addEventListener('reading',()=>{ if(s.quaternion){ const ydeg=quatToEulerY(s.quaternion); currentYaw=currentYaw*0.82 + ydeg*0.18; } }); s.start(); } }catch{} try{ addEventListener('deviceorientation',(e)=>{ if(typeof e.gamma==='number'&&!Number.isNaN(e.gamma)) currentYaw=currentYaw*0.85 + e.gamma*0.15; }, {passive:true}); }catch{} }
 function updateMotion(){ filtYaw=0.86*filtYaw + 0.14*currentYaw; const vel=filtYaw - prevFiltYaw; prevFiltYaw=filtYaw; filtVel=0.82*filtVel + 0.18*vel; const speeding=Math.abs(filtVel)>VEL_THR; sweepBoost=sweepBoost*0.85 + (speeding?1:0)*0.15; const now=performance.now(); if(speeding && (now-lastFlipTs)>FLIP_COOLDOWN){ const nd=(filtVel>0)?'ltr':'rtl'; if(nd!==lastDir){ lastDir=nd; lastFlipTs=now; } } if(hapticsChk.checked && 'vibrate' in navigator && isPlaying && speeding){ if(!updateMotion._t || now-updateMotion._t>900){ navigator.vibrate(10); updateMotion._t=now; } } }
 
-// Rendering (bigger dots, lower centre; plus Test Sweep time-based progression)
+// Rendering + Test Sweep
 let hueBase=0; const DISCO_STEP=12; let isPlaying=false, sessionEnd=0, DOT_COLOR='#ffffff';
-const DIAM_FACTOR = 0.92;          // slightly bigger vs 9.3.10.1
-const VERTICAL_SHIFT_PCT = 0.18;   // previous 0.08 + extra 0.10
+const DIAM_FACTOR = 0.92;          // from previous build
+const VERTICAL_SHIFT_PCT = 0.18;   // from previous build
 const AFTERGLOW = 0.04;
 
-// Test sweep state
-let ts_pos=0, ts_dir=1, lastTime=0;         // ts_pos in [0..1]
-const BASE_PERIOD_SEC = 2.0;                // baseline L→R→L is 2 sweeps; we use 1 period for L→R
+let ts_pos=0, ts_dir=1, lastTime=0;
+const BASE_PERIOD_SEC = 2.0;   // baseline period for L→R at 1.0× (we multiply by slider value)
 
 function hsvToRgb(h,s,v){ const c=v*s, hh=(h%360)/60, x=c*(1-Math.abs((hh%2)-1)); let r=0,g=0,b=0; if(0<=hh&&hh<1){r=c;g=x;} else if(1<=hh&&hh<2){r=x;g=c;} else if(2<=hh&&hh<3){g=c;b=x;} else if(3<=hh&&hh<4){g=x;b=c;} else if(4<=hh&&hh<5){r=x;b=c;} else {r=c;b=x;} const m=v-c; return [Math.round((r+m)*255),Math.round((g+m)*255),Math.round((b+m)*255)]; }
 
@@ -106,30 +105,23 @@ function drawPOV(t){
 
   const spacing=(h*0.95)/NUM_ROWS; const diam=Math.min(spacing, Math.max(7, spacing*DIAM_FACTOR)); const gap=Math.max(1, spacing-diam);
   const total=NUM_ROWS*(diam+gap);
-  const centerY = h/2 + h*VERTICAL_SHIFT_PCT; // shifted lower
-  const top = centerY - total/2 + diam/2;
+  const centerY = h/2 + h*VERTICAL_SHIFT_PCT; const top = centerY - total/2 + diam/2;
   const disco=(DOT_COLOR==='disco');
 
-  // Column index: sensor-based or auto sweep (time-based)
   let sClamped=0;
   if(testSweepChk.checked){
-    // auto sweep left↔right with adjustable speed (× factor). 1.0× ~ 1.2s L→R by default
     const now=t||performance.now(); if(!lastTime) lastTime=now; const dt=(now-lastTime)/1000; lastTime=now;
-    const speedFactor = Math.max(0.1, parseFloat(sweepSpeed.value)||1.2);  // × factor
-    const cps = (1/BASE_PERIOD_SEC) * speedFactor; // cycles per second for L→R
-    ts_pos += ts_dir * cps * dt; // 0..1
-    if(ts_pos>1){ ts_pos=1; ts_dir=-1; }
-    if(ts_pos<0){ ts_pos=0; ts_dir=1; }
-    sClamped = ts_pos; // 0..1
+    const factor = Math.max(1.5, Math.min(7.0, parseFloat(sweepSpeed.value)||2.0));
+    const cps = (1/BASE_PERIOD_SEC) * factor; // cycles per second L→R
+    ts_pos += ts_dir * cps * dt; if(ts_pos>1){ ts_pos=1; ts_dir=-1; } if(ts_pos<0){ ts_pos=0; ts_dir=1; }
+    sClamped = ts_pos;
   } else {
     const effectiveMirror = autoMirrorChk.checked ? (lastDir==='rtl') : false; let left=-35, right=35; if(effectiveMirror) [left,right]=[right,left];
-    const sRaw = (filtYaw - left)/((right-left)||1);
-    sClamped = Math.max(0, Math.min(1, sRaw));
+    const sRaw = (filtYaw - left)/((right-left)||1); sClamped = Math.max(0, Math.min(1, sRaw));
   }
 
   const idx = Math.floor(sClamped * Math.max(0,colCount-1));
   const bits = (textColumns[idx] || new Uint8Array(NUM_ROWS));
-
   for(let r=0;r<NUM_ROWS;r++) if(bits[r]){
     const y = top + r*(diam+gap), x = w/2;
     if(disco){ const hue=(hueBase + r*DISCO_STEP)%360; const c=hsvToRgb(hue,1,0.98); ctx.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`; } else ctx.fillStyle=DOT_COLOR;

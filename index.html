@@ -4,10 +4,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Word Wand v9.3.10.2</title>
+  <title>Word Wand v9.3.10.3</title>
   <meta name="theme-color" content="#000000" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=9.3.10.2" />
+  <link rel="stylesheet" href="styles.css?v=9.3.10.3" />
 </head>
 <body>
   <main>
@@ -46,8 +46,8 @@
           <div class="rowBtns">
             <label class="chip small">Test sweep <input id="testSweepChk" type="checkbox" checked /></label>
             <label id="speedWrap" class="chip small">Sweep speed
-              <input id="sweepSpeed" type="range" min="0.4" max="3.0" step="0.05" value="1.2" />
-              <span id="sweepSpeedVal" class="mono">1.2×</span>
+              <input id="sweepSpeed" type="range" min="1.5" max="7.0" step="0.1" value="2.0" />
+              <span id="sweepSpeedVal" class="mono">2.0×</span>
             </label>
             <label class="chip small">Auto‑mirror <input id="autoMirrorChk" type="checkbox" checked /></label>
             <label class="chip small">Haptics <input id="hapticsChk" type="checkbox" checked /></label>
@@ -76,17 +76,16 @@
       <ol>
         <li>Type a word (max 24 characters).</li>
         <li>Press <b>Go</b> — playback starts immediately.</li>
-        <li>Use <b>Test sweep</b> + <b>Sweep speed</b> to find the most legible pace.
-            Toggle Test sweep off to use phone motion instead.</li>
+        <li>Use <b>Test sweep</b> + <b>Sweep speed</b> (1.5×–7×) to find the most legible pace. Toggle it off to use phone motion.</li>
       </ol>
       <button id="closeHelp">Close</button>
     </dialog>
   </main>
 
-  <script src="app.js?v=9.3.10.2"></script>
+  <script src="app.js?v=9.3.10.3"></script>
   <script>
-    console.log('WW v9.3.10.2: index.html loaded');
-    window.addEventListener('DOMContentLoaded', ()=>console.log('WW v9.3.10.2: DOM ready'));
+    console.log('WW v9.3.10.3: index.html loaded');
+    window.addEventListener('DOMContentLoaded', ()=>console.log('WW v9.3.10.3: DOM ready'));
   </script>
 </body>
 </html>
